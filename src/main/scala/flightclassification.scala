@@ -1,5 +1,7 @@
 print("\033c" )
 
+// :load /home/siddharth/vscode/class_work/BDA/curly-octo-system/src/main/scala/flightclassification.scala
+
 import org.apache.spark._
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -8,12 +10,12 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 case class Flight(dofM: String, dofW: String, carrier: String, tailnum: String, flnum: Int, org_id: String, origin: String,
                     dest_id: String, dest: String, crsdeptime: Double, deptime: Double, depdelaymins: Double, crsarrtime: Double,
-                    arrtime: Double, arrdelay: Double, crselapsedtime: Double, dist: Int)
+                    arrtime: Double, arrdelay: Double, crselapsedtime: Double, dist: Int, arrdelaymins: Double)
 
 def parseFlight(str: String): Flight = {
     val line = str.split(",")
     Flight(line(0), line(1), line(2), line(3), line(4).toInt, line(5), line(6), line(7), line(8), line(9).toDouble,
-    line(10).toDouble, line(11).toDouble, line(12).toDouble, line(13).toDouble, line(14).toDouble, line(15).toDouble, line(16).toInt)
+    line(10).toDouble, line(11).toDouble, line(12).toDouble, line(13).toDouble, line(14).toDouble, line(15).toDouble, line(16).toInt, line(14).toDouble)
 }
 
 
@@ -52,11 +54,6 @@ var originMap: Map[String, Int] = Map()
 var index1: Int = 0
 flightsRDD.map(flight => flight.origin).distinct.collect.foreach(x => { originMap += (x -> index1); index1 += 1 })
 
-// Print OriginMap in tabular format
-println("\nOrigin Map: \n")
-println("Key\tValue")
-originMap.foreach{ case (key, value) => println(key + "\t" + value) }
-
 
 //  ------------------------------------- destMap map -------------------------------------
 
@@ -83,16 +80,148 @@ val feature_array = flightsRDD.map(flight => {
 val totalFlights = flightsRDD.count()
 print(totalFlights)
 
+
 // ------------------------------------- Num of flights per terminal -------------------------------------
 
 val flightsPerTerminal = flightsRDD.map(flight => (flight.origin, 1)).reduceByKey(_ + _)
-
 println("\nNumber of flights per terminal: \n")
 println("Key\tValue")
 flightsPerTerminal.foreach{
     case (key,value) => println(key + "\t" + value)
 }
 
+
+// ------------------------------------- Calculate the average departure delay for each airport -------------------------------------
+val avgDepartureDelaysPerAirport = flightsRDD.map(flight => (flight.origin, flight.depdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size)
+println("\nAverage departure delay per airport: \n")
+println("Key\tValue")
+avgDepartureDelaysPerAirport.foreach{
+    case (key,value) => println(key + "\t" + value)
+}
+
+
+// ------------------------------------- Calculate the average arrival delay for each airport -------------------------------------
+val avgArrivalDelaysPerAirport = flightsRDD.map(flight => (flight.origin, flight.arrdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size)
+println("\nAverage departure delay per airport: \n")
+println("Key\tValue")
+avgArrivalDelaysPerAirport.foreach{
+    case (key,value) => println(key + "\t" + value)
+}
+
+
+// ------------------------------------- Count of delayed flights (departure and arrival) -------------------------------------
+
+val departure_delay_count = flightsRDD.filter(flight => flight.depdelaymins > 20).count()
+val arrival_delay_count = flightsRDD.filter(flight => flight.arrdelaymins > 20).count()
+val total_count = departure_delay_count + arrival_delay_count
+print("\nTotal number of delayed flights: " + total_count + "\n")
+
+
+// ------------------------------------- flights that were delayed both at departure and arrival -------------------------------------
+
+val delayed_flight_atdepandarr = flightsRDD.filter(flight => flight.depdelaymins > 20 && flight.arrdelaymins > 20).count()
+print("\nTotal number of flights delayed at diparture and arrival: " + total_count + "\n")
+
+
+// ------------------------------------- flights that were not delayed both at departure and arrival -------------------------------------
+
+val delayed_flight_atdepandarr = flightsRDD.filter(flight => flight.depdelaymins == 0 && flight.arrdelaymins == 20).count()
+print("\nTotal number of flights not delayed at diparture and arrival: " + total_count + "\n")
+
+
+// ------------------------------------- Top 3 origin airport code delay with total flights and on-time flights count -------------------------------------
+
+val top_origin_delay = flightsRDD.map(flight => (flight.origin, flight.depdelaymins)).reduceByKey(_ + _).sortBy(_._2, false).take(3)
+println("Top 3 origin airport codes with the highest delays:")
+val origin_delay_df = top_origin_delay.map{ case (code, delay) => 
+    val total_flights = flightsRDD.filter(flight => flight.origin == code).count()
+    val delayed_flights = flightsRDD.filter(flight => flight.origin == code && flight.depdelaymins > 0).count()
+    (code, total_flights, delayed_flights)
+}
+println("%-13s %-14s %-16s".format("Airport Code\tTotal Flights\tDelayed Flights"))
+origin_delay_df.foreach{ case (code, total_flights, delayed_flights) => 
+    println("%-13s %-14s %-16s".format(code + "\t" + total_flights + "\t" + delayed_flights))
+}
+
+
+// ------------------------------------- Top 3 departure airport code delay with total flights and on-time flights count -------------------------------------
+
+val top_departure_delay = flightsRDD.map(flight => (flight.dest, flight.arrdelaymins)).reduceByKey(_ + _).sortBy(_._2, false).take(3)
+println("Top 3 departure airport codes with the highest delays:")
+val departure_delay_df = top_departure_delay.map { case (code, delay) =>
+  val total_flights = flightsRDD.filter(flight => flight.dest == code).count()
+  val delayed_flights = flightsRDD.filter(flight => flight.dest == code && flight.arrdelaymins > 0).count()
+  (code, total_flights, delayed_flights)
+}
+
+println("%-13s %-14s %-16s".format("Airport Code", "Total Flights", "Delayed Flights"))
+departure_delay_df.foreach { case (code, total_flights, delayed_flights) =>
+  println("%-13s %-14s %-16s".format(code, total_flights, delayed_flights))
+}
+
+
+// ------------------------------------- Top 3 origin airport code on time flights with total flights and on-time flights count -------------------------------------
+
+println("Top 3 origin airport codes with the highest on-time flights:")
+val top_origin_ontime = flightsRDD.map(flight => (flight.origin, flight.depdelaymins)).reduceByKey(_ + _).sortBy(_._2, false).take(3)
+val origin_ontime_df = top_origin_ontime.map { case (code, delay) =>
+  val total_flights = flightsRDD.filter(flight => flight.origin == code).count()
+  val ontime_flights = flightsRDD.filter(flight => flight.origin == code && flight.depdelaymins == 0).count()
+  (code, total_flights, ontime_flights)
+}
+
+println("%-13s %-14s %-16s".format("Airport Code", "Total Flights", "On-time Flights"))
+origin_ontime_df.foreach { case (code, total_flights, ontime_flights) =>
+  println("%-13s %-14s %-16s".format(code, total_flights, ontime_flights))
+}
+
+// ------------------------------------- Top 3 departure airport code on time flights with total flights and on-time flights count -------------------------------------
+
+println("Top 3 departure airport codes with the highest on-time flights:")
+val top_departure_ontime = flightsRDD.map(flight => (flight.dest, flight.arrdelaymins)).reduceByKey(_ + _).sortBy(_._2, false).take(3)
+val departure_ontime_df = top_departure_ontime.map { case (code, delay) =>
+  val total_flights = flightsRDD.filter(flight => flight.dest == code).count()
+  val ontime_flights = flightsRDD.filter(flight => flight.dest == code && flight.arrdelaymins == 0).count()
+  (code, total_flights, ontime_flights)
+}
+
+println("%-13s %-14s %-16s".format("Airport Code", "Total Flights", "On-time Flights"))
+departure_ontime_df.foreach { case (code, total_flights, ontime_flights) =>
+  println("%-13s %-14s %-16s".format(code, total_flights, ontime_flights))
+}
+
+
+
+// ------------------------------------- Top planes with highest average departure delays -------------------------------------
+
+val top_planes_highest_dept_delays = flightsRDD.map(flight => (flight.tailnum, flight.depdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size.toDouble).sortBy(_._2, false).take(3)
+println("Top 3 planes with the highest average departure delays:")
+top_planes_highest_dept_delays.foreach{ case (tailnum, delay) => println(tailnum + "\t" + delay) }
+println()
+
+
+// ------------------------------------- Top planes with lowest average departure delays -------------------------------------
+
+val top_planes_lowest_dept_delays = flightsRDD.map(flight => (flight.tailnum, flight.depdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size.toDouble).sortBy(_._2).take(3)
+println("Top 3 planes with the lowest average departure delays:")
+top_planes_lowest_dept_delays.foreach{ case (tailnum, delay) => println(tailnum + "\t" + delay) }
+println()
+
+
+// ------------------------------------- Top planes with highest average arrival delays -------------------------------------
+
+val top_planes_highest_arrival_delays = flightsRDD.map(flight => (flight.tailnum, flight.arrdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size.toDouble).sortBy(_._2, false).take(3)
+println("Top 3 planes with the highest average arrival delays:")
+top_planes_highest_arrival_delays.foreach{ case (tailnum, delay) => println(tailnum + "\t" + delay) }
+println()
+
+
+// ------------------------------------- Top planes with lowest average arrival delays -------------------------------------
+
+val top_planes_lowest_arrival_delays = flightsRDD.map(flight => (flight.tailnum, flight.arrdelaymins)).groupByKey().mapValues(avg => avg.sum/avg.size.toDouble).sortBy(_._2).take(3)
+println("Top 3 planes with the lowest average arrival delays:")
+top_planes_lowest_arrival_delays.foreach{ case (tailnum, delay) => println(tailnum + "\t" + delay) }
+println()
 
 
 
