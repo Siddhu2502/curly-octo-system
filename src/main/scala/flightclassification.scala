@@ -1,10 +1,10 @@
+print("\033c" )
+
 import org.apache.spark._
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.{SparkConf, SparkContext}
-import scala.collection.immutable.Table
-
 
 case class Flight(dofM: String, dofW: String, carrier: String, tailnum: String, flnum: Int, org_id: String, origin: String,
                     dest_id: String, dest: String, crsdeptime: Double, deptime: Double, depdelaymins: Double, crsarrtime: Double,
@@ -16,8 +16,8 @@ def parseFlight(str: String): Flight = {
     line(10).toDouble, line(11).toDouble, line(12).toDouble, line(13).toDouble, line(14).toDouble, line(15).toDouble, line(16).toInt)
 }
 
-// def main(args: Array[String]) 
 
+// ------------------------------------- initializes a local Spark context -------------------------------------
 val sparkConf = new SparkConf()
 .setAppName("FlightDelayPrediction") // spark submitted app name
 .setMaster("local[*]") // run spark using all available cores
@@ -31,6 +31,8 @@ val header = data.first()
 val textRDD = data.filter(row => row != header)
 
 val flightsRDD = textRDD.map(parseFlight).cache()
+
+
 
 // next step is to transform the non-numeric features into numeric values
 
@@ -51,9 +53,9 @@ var index1: Int = 0
 flightsRDD.map(flight => flight.origin).distinct.collect.foreach(x => { originMap += (x -> index1); index1 += 1 })
 
 // Print OriginMap in tabular format
-println("Origin Map:")
-val table = Table(("Origin", "Index")) +: originMap.toSeq.map { case (origin, index) => (origin, index) }
-table.foreach(println)
+println("\nOrigin Map: \n")
+println("Key\tValue")
+originMap.foreach{ case (key, value) => println(key + "\t" + value) }
 
 
 //  ------------------------------------- destMap map -------------------------------------
@@ -63,7 +65,7 @@ var destMap: Map[String, Int] = Map()
 var index2: Int = 0
 flightsRDD.map(flight => flight.dest).distinct.collect.foreach(x => { destMap += (x -> index2); index2 += 1 })
 
-// creating the features array
+// ------------------------------------- creating the features array -------------------------------------
 val feature_array = flightsRDD.map(flight => {
     val monthday = flight.dofM.toInt - 1 // category // -1 because feature starts with 0
     val weekday = flight.dofW.toInt - 1 // category // -1 because feature starts with 0
@@ -71,13 +73,25 @@ val feature_array = flightsRDD.map(flight => {
     val crsarrtime1 = flight.crsarrtime.toInt
     val carrier1 = carrierMap(flight.carrier) // category
     val crselapsedtime1 = flight.crselapsedtime
-    val origin1 = originMap(flight.origin) // category
-    val dest1 = destMap(flight.dest) // category
     val delayed = if (flight.depdelaymins > 40) 1.0 else 0.0
-    Array(delayed.toDouble, monthday.toDouble, weekday.toDouble, crsdeptime1.toDouble, crsarrtime1.toDouble, carrier1.toDouble, crselapsedtime1.toDouble, origin1.toDouble, dest1.toDouble)
-})
+    Array(delayed.toDouble, monthday.toDouble, 
+            weekday.toDouble, crsdeptime1.toDouble, crsarrtime1.toDouble, 
+            carrier1.toDouble, crselapsedtime1.toDouble)
+    })
 
+// Calculate total number of flights
+val totalFlights = flightsRDD.count()
+print(totalFlights)
 
+// ------------------------------------- Num of flights per terminal -------------------------------------
+
+val flightsPerTerminal = flightsRDD.map(flight => (flight.origin, 1)).reduceByKey(_ + _)
+
+println("\nNumber of flights per terminal: \n")
+println("Key\tValue")
+flightsPerTerminal.foreach{
+    case (key,value) => println(key + "\t" + value)
+}
 
 
 
