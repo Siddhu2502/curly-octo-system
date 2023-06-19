@@ -1,0 +1,5 @@
+/project
+/.bsp
+/target
+flight.ipynb
+build.sbt
