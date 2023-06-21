@@ -2,11 +2,12 @@ print("\033c" )
 
 // :load /home/siddharth/vscode/class_work/BDA/curly-octo-system/src/main/scala/flightclassification.scala
 
-import org.apache.spark._
+
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.{SparkConf, SparkContext}
+
 
 case class Flight(dofM: String, dofW: String, carrier: String, tailnum: String, flnum: Int, org_id: String, origin: String,
                     dest_id: String, dest: String, crsdeptime: Double, deptime: Double, depdelaymins: Double, crsarrtime: Double,
@@ -64,16 +65,16 @@ flightsRDD.map(flight => flight.dest).distinct.collect.foreach(x => { destMap +=
 
 // ------------------------------------- creating the features array -------------------------------------
 val feature_array = flightsRDD.map(flight => {
-    val monthday = flight.dofM.toInt - 1 // category // -1 because feature starts with 0
-    val weekday = flight.dofW.toInt - 1 // category // -1 because feature starts with 0
-    val crsdeptime1 = flight.crsdeptime.toInt
-    val crsarrtime1 = flight.crsarrtime.toInt
-    val carrier1 = carrierMap(flight.carrier) // category
-    val crselapsedtime1 = flight.crselapsedtime
-    val delayed = if (flight.depdelaymins > 40) 1.0 else 0.0
-    Array(delayed.toDouble, monthday.toDouble, 
-            weekday.toDouble, crsdeptime1.toDouble, crsarrtime1.toDouble, 
-            carrier1.toDouble, crselapsedtime1.toDouble)
+      val monthday = flight.dofM.toInt - 1 // category // -1 because feature starts with 0
+      val weekday = flight.dofW.toInt - 1 // category // -1 because feature starts with 0
+      val crsdeptime1 = flight.crsdeptime.toInt
+      val crsarrtime1 = flight.crsarrtime.toInt
+      val carrier1 = carrierMap(flight.carrier) // category
+      val crselapsedtime1 = flight.crselapsedtime
+      val origin1 = originMap(flight.origin) // category
+      val dest1 = destMap(flight.dest) // category
+      val delayed = if (flight.depdelaymins > 40) 1.0 else 0.0
+      Array(delayed.toDouble, monthday.toDouble, weekday.toDouble, crsdeptime1.toDouble, crsarrtime1.toDouble, carrier1.toDouble, crselapsedtime1.toDouble, origin1.toDouble, dest1.toDouble)
     })
 
 // Calculate total number of flights
@@ -233,12 +234,12 @@ println()
 
 
 
-// -------------------------------------------------------------- its ml part dont mind --------------------------------------------------------------
+// // -------------------------------------------------------------- its ml part dont mind --------------------------------------------------------------
 
 // // generating Labeled Points
 // // first parameter is label or target variable which is 'delayed' in our case
 // // second parameter is a vector of features
-// val mldata = mlprep.map(x => LabeledPoint(x(0), Vectors.dense(x(1), x(2), x(3), x(4), x(5), x(6), x(7), x(8))))
+// val mldata = feature_array.map(x => LabeledPoint(x(0), Vectors.dense(x(1), x(2), x(3), x(4), x(5), x(6), x(7), x(8))))
 
 // // split the data into training and test data set
 
@@ -266,13 +267,13 @@ println()
 
 // val numClasses = 2 //delayed(1) and not-delayed(0)
 // val impurity = "gini"
-// val maxDepth = 10
-// val maxBins = 5000
+// val maxDepth = 9
+// val maxBins = 7000
 
 // val model = DecisionTree.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
 
-// // print the decision tree
-// println(model.toDebugString)
+// // // print the decision tree
+// // println(model.toDebugString)
 
 // // test the model
 // val labelAndPreds = testData.map { point =>
