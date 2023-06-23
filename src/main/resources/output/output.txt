@@ -1,0 +1,105 @@
+Total number of flights: 441622
+
+
+
+Num of flights per origin terminal 
+Origin		Count
+---------------------
+ATL		28420
+DFW		22771
+LAX		18051
+ORD		17960
+DEN		17293
+
+
+Num of flights per destination 
+dest		Count
+---------------------
+ATL		28279
+DFW		22724
+LAX		18014
+ORD		17874
+DEN		17175
+
+
+------------------------------------- -------------------------------------
+              Speed and Time based analysis on the dataset
+------------------------------------- -------------------------------------
+
+
+Average speed of each flight (tail number) 
+Tail Number		Average Speed
+------------------------------------------
+N390AA		398.5171190971191
+N3CXAA		355.0793358440167
+N351NW		309.2028783872204
+N941MQ		279.3981803809794
+N527MQ		305.9928750022736
+
+
+Standard deviation of the average speed of each flight (tail number) 
+Tail Number		Standard deviation
+------------------------------------------
+N390AA		44.401151935709095
+N3CXAA		77.60428568049387
+N351NW		71.7035233941441
+N941MQ		67.2776605793065
+N527MQ		77.51870429410256
+
+
+Correlation between distance and speed 
+------------------------------------------
+The corelation between distance to speed is = 0.8186846386751937
+
+
+Correlation between arrival delay and departure delay 
+------------------------------------------
+The corelation between arrival delay and departure delay is = 0.9543986121940182
+
+
+------------------------------------- -------------------------------------
+                                 Overall and Misc
+------------------------------------- -------------------------------------
+
+
+Num of Planes in each day of week 
+Day of Week		Count
+---------------------
+1		59823
+2		53103
+3		70757
+4		76233
+5		76263
+6		49016
+7		56427
+
+
+Average delay in each day of week in hours 
+Day of Week		Average Delay (in hours)
+---------------------
+1		16291.833333333334
+2		13130.483333333334
+3		20696.283333333333
+4		25823.05
+5		25436.983333333334
+6		17386.366666666665
+7		16535.166666666668
+
+
+Overall delay percentage 
+Overall delay percentage = 22.319313802301515
+
+
+Carrier wise percent of delays 
+Carrier		Percentage of delay
+---------------------
+WN		27.100347986648675
+EV		14.339484817433826
+DL		11.904592815039516
+OO		8.359795874887133
+UA		8.209644201406151
+AA		7.811945174348413
+MQ		7.476132985684863
+B6		5.331398946909209
+US		4.330049610924549
+FL		2.0493674353485445
